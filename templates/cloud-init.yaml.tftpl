@@ -1,0 +1,190 @@
+#cloud-config
+write_files:
+  - path: /etc/oci-foundations-lab/config.json
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${app_config_json}
+
+  - path: /usr/local/sbin/configure-oci-foundations-lab.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      exec > >(tee -a /var/log/oci-foundations-lab-bootstrap.log) 2>&1
+
+      APP_DIR="/opt/${app_directory_name}"
+      REPO_URL="${app_source_repo_url}"
+      REPO_BRANCH="${app_source_branch}"
+
+      echo "Starting OCI Foundations app bootstrap at $(date -Is)"
+
+      retry() {
+        local attempts="$1"
+        shift
+        local delay=15
+        local n=1
+        until "$@"; do
+          if [ "$n" -ge "$attempts" ]; then
+            echo "Command failed after $attempts attempts: $*" >&2
+            return 1
+          fi
+          echo "Command failed, retry $n/$attempts in $delay seconds: $*" >&2
+          n=$((n + 1))
+          sleep "$delay"
+        done
+      }
+
+      retry 12 dnf install -y firewalld git python3-pip
+
+      if [ ! -d "$APP_DIR/.git" ]; then
+        rm -rf "$APP_DIR"
+        if ! retry 4 git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$APP_DIR"; then
+          rm -rf "$APP_DIR"
+          retry 4 git clone --depth 1 "$REPO_URL" "$APP_DIR"
+        fi
+      else
+        git -C "$APP_DIR" pull --ff-only || true
+      fi
+
+      install -m 0600 -o opc -g opc /etc/oci-foundations-lab/config.json "$APP_DIR/flask/config.txt"
+      chown -R opc:opc "$APP_DIR"
+
+      retry 4 python3 -m pip install --upgrade "pip<22"
+      retry 4 python3 -m pip install \
+        "requests==2.27.1" \
+        "Flask==2.0.3" \
+        "Werkzeug==2.0.3" \
+        "pymongo==4.1.1" \
+        "oci==2.112.4"
+
+      systemctl enable --now firewalld
+      firewall-cmd --permanent --zone=public --add-port=${app_port}/tcp
+      firewall-cmd --reload
+
+      systemctl daemon-reload
+      systemctl enable oci-lab-mount-data-volume.service
+      systemctl start oci-lab-mount-data-volume.service || true
+      systemctl enable --now oci-foundations-lab.service
+
+      echo "Completed OCI Foundations app bootstrap at $(date -Is)"
+
+  - path: /usr/local/sbin/oci-lab-mount-data-volume.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      MOUNT_POINT="${block_mount_point}"
+      mkdir -p "$MOUNT_POINT"
+
+      if mountpoint -q "$MOUNT_POINT"; then
+        exit 0
+      fi
+
+      root_source="$(findmnt -n -o SOURCE /)"
+      root_parent="$(lsblk -no PKNAME "$root_source" 2>/dev/null | head -n 1 || true)"
+      root_disk=""
+      if [ -n "$root_parent" ]; then
+        root_disk="/dev/$root_parent"
+      fi
+
+      for attempt in $(seq 1 120); do
+        while read -r disk type; do
+          [ "$type" = "disk" ] || continue
+          [ -n "$root_disk" ] && [ "$disk" = "$root_disk" ] && continue
+
+          if lsblk -nrpo MOUNTPOINT "$disk" | grep -qE '^/$|^/boot'; then
+            continue
+          fi
+
+          if lsblk -nrpo MOUNTPOINT "$disk" | grep -q "$MOUNT_POINT"; then
+            exit 0
+          fi
+
+          if ! blkid "$disk" >/dev/null 2>&1; then
+            mkfs.ext4 -F "$disk"
+          fi
+
+          uuid="$(blkid -s UUID -o value "$disk")"
+          if ! grep -q "$uuid" /etc/fstab; then
+            echo "UUID=$uuid $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
+          fi
+
+          mount "$MOUNT_POINT"
+          exit 0
+        done < <(lsblk -dnpo NAME,TYPE)
+
+        sleep 5
+      done
+
+      echo "No unattached ${block_volume_size_gb}GB-style data disk found for $MOUNT_POINT" >&2
+      exit 1
+
+  - path: /etc/systemd/system/oci-lab-mount-data-volume.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Format and mount OCI lab data block volume
+      After=network-online.target cloud-final.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/oci-lab-mount-data-volume.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/oci-foundations-lab.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=OCI Foundations Lab Flask App
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=opc
+      Group=opc
+      WorkingDirectory=/opt/${app_directory_name}
+      Environment=PORT=${app_port}
+      ExecStart=/usr/bin/python3 /opt/${app_directory_name}/flask/OCIFundamentalWorkshop-Instance.py
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/oci-foundations-bootstrap.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Bootstrap OCI Foundations Lab App
+      After=network-online.target cloud-final.service
+      Wants=network-online.target
+      StartLimitIntervalSec=900
+      StartLimitBurst=20
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/configure-oci-foundations-lab.sh
+      Restart=on-failure
+      RestartSec=30
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, oci-foundations-bootstrap.service]
+  - [systemctl, start, --no-block, oci-foundations-bootstrap.service]
+
+final_message: "OCI Foundations lab bootstrap complete."

@@ -1,0 +1,32 @@
+# Required tenancy and region
+tenancy_ocid = "ocid1.tenancy.oc1..replace_me"
+region       = "il-jerusalem-1"
+
+# If your OCI CLI already works, Terraform can use the same ~/.oci/config profile.
+# Set this only if you use a profile other than DEFAULT.
+config_file_profile = "DEFAULT"
+
+# Optional explicit API-key auth values. Usually not needed if ~/.oci/config is already set.
+# user_ocid        = "ocid1.user.oc1..replace_me"
+# fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+# private_key_path = "~/.oci/oci_api_key.pem"
+
+# Public SSH key for the opc user on the private compute instance.
+# Prefer filling this automatically with:
+#   bash scripts/prepare_ssh_key.sh
+ssh_public_key = "ssh-rsa AAAA... replace_me"
+
+# ADB password rules: 12-30 chars, uppercase, lowercase, number, no double quote, no @, no admin.
+adb_admin_password = "ReplaceMe12345"
+
+# Optional overrides
+# project_name          = "oci-foundations-lab"
+# compartment_name      = "my-custom-lab-name"
+# bucket_name           = "my-unique-workshop-bucket"
+# allowed_http_cidrs    = ["0.0.0.0/0"]
+# lb_health_check_port  = 22
+# adb_allowed_cidrs     = ["0.0.0.0/0"]
+# adb_compute_count     = 4
+# adb_data_storage_size_in_gb = 20
+# app_source_repo_url   = "https://github.com/OCISRAEL/oci-foundations-lab.git"
+# app_source_branch     = "main"
