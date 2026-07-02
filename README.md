@@ -8,7 +8,21 @@ JSON Database, and a public load balancer for the lab application.
 
 These are the only steps needed for a clean, first-time deployment.
 
-### 1. Prerequisites
+### 1. Clone the Repository Locally
+
+Terraform runs from a local working directory. Clone this repository and run
+every command in the rest of this guide from that local copy; do not try to
+deploy from the GitHub website.
+
+~~~bash
+git clone https://github.com/OCISRAEL/oci-foundation-lab-tf.git
+cd oci-foundation-lab-tf
+~~~
+
+If you already cloned the repository, open a terminal and change to that
+directory before continuing.
+
+### 2. Prerequisites
 
 - Terraform 1.6 or later
 - OCI CLI configured and authenticated with an API key
@@ -21,7 +35,7 @@ Your OCI CLI identity needs permission to create the resources listed in
 [What Terraform Creates](#what-terraform-creates). The deployment creates
 billable OCI resources; use the destroy instructions when you finish the lab.
 
-### 2. Create Your Local Variables File
+### 3. Create Your Local Variables File
 
 <code>terraform.tfvars</code> holds local settings and credentials, so it is deliberately
 not committed to Git.
@@ -52,7 +66,7 @@ Review these settings before continuing:
   lowercase, and a number. It must not contain <code>admin</code>, <code>@</code>, or a double quote.
 - <code>ssh_public_key</code>: populated by the script above
 
-### 3. Initialize, Plan, and Apply
+### 4. Initialize, Plan, and Apply
 
 Run these commands from the repository root:
 
@@ -66,7 +80,7 @@ terraform apply tfplan
 Read the plan before applying it. The saved <code>tfplan</code> ensures the reviewed plan
 is the one Terraform applies.
 
-### 4. Create the JSON Collection
+### 5. Create the JSON Collection
 
 Terraform creates the Autonomous Database, but the application also needs its
 MongoDB-compatible JSON collection. Run this after a successful <code>terraform apply</code>:
@@ -80,7 +94,7 @@ python3 -m venv .venv
 The helper uses the Terraform outputs and the ADB admin password in your local
 variables file to create <code>MY_COLLECTION</code>.
 
-### 5. Confirm the Deployment
+### 6. Confirm the Deployment
 
 Terraform prints all outputs after a successful apply. The most useful ones
 are:
@@ -103,7 +117,7 @@ A healthy application returns <code>HTTP/1.1 200 OK</code>. A temporary <code>50
 usually means cloud-init is still installing and starting the application;
 wait a few minutes and retry.
 
-### 6. Validate an Application Upload Before Destroying
+### 7. Validate an Application Upload Before Destroying
 
 Complete an upload and confirm that the object reached Object Storage before
 you destroy the lab. You can use the browser, the CLI, or both.
@@ -204,7 +218,7 @@ To remove existing documents and recreate <code>MY_COLLECTION</code>:
 .venv/bin/python scripts/create_adb_json_collection.py --terraform-dir . --recreate
 ~~~
 
-If the collection helper in step 4 cannot create the collection, use Database
+If the collection helper in step 5 cannot create the collection, use Database
 Actions:
 
 1. Open the Autonomous Database named by the <code>autonomous_database_ocid</code> output.
