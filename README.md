@@ -28,6 +28,9 @@ directory before continuing.
 - OCI CLI configured and authenticated with an API key
 - OpenSSH (<code>ssh-keygen</code>) for the VM access key
 
+For first-time OCI CLI installation, configuration, and API signing-key setup,
+follow Oracle's [OCI CLI Quickstart](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm).
+
 Python 3, <code>curl</code>, and <code>jq</code> are only needed for the optional
 verification and database helper steps later in this document.
 
