@@ -8,7 +8,23 @@ JSON Database, and a public load balancer for the lab application.
 
 These are the only steps needed for a clean, first-time deployment.
 
-### 1. Clone the Repository Locally
+### 1. Prerequisites
+
+- Terraform 1.6 or later
+- OCI CLI configured and authenticated with an API key
+- OpenSSH (<code>ssh-keygen</code>) for the VM access key
+
+For first-time OCI CLI installation, configuration, and API signing-key setup,
+follow the simplified [quickCLI guide](https://github.com/OCISRAEL/quickCLI).
+
+Python 3, <code>curl</code>, and <code>jq</code> are only needed for the optional
+verification and database helper steps later in this document.
+
+Your OCI CLI identity needs permission to create the resources listed in
+[What Terraform Creates](#what-terraform-creates). The deployment creates
+billable OCI resources; use the destroy instructions when you finish the lab.
+
+### 2. Clone the Repository Locally
 
 Terraform runs from a local working directory. Clone this repository and run
 every command in the rest of this guide from that local copy; do not try to
@@ -21,22 +37,6 @@ cd oci-foundation-lab-tf
 
 If you already cloned the repository, open a terminal and change to that
 directory before continuing.
-
-### 2. Prerequisites
-
-- Terraform 1.6 or later
-- OCI CLI configured and authenticated with an API key
-- OpenSSH (<code>ssh-keygen</code>) for the VM access key
-
-For first-time OCI CLI installation, configuration, and API signing-key setup,
-follow Oracle's [OCI CLI Quickstart](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm).
-
-Python 3, <code>curl</code>, and <code>jq</code> are only needed for the optional
-verification and database helper steps later in this document.
-
-Your OCI CLI identity needs permission to create the resources listed in
-[What Terraform Creates](#what-terraform-creates). The deployment creates
-billable OCI resources; use the destroy instructions when you finish the lab.
 
 ### 3. Create Your Local Variables File
 
